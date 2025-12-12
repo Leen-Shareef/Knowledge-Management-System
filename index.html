@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KNAgent Enterprise Portal</title>
+    <style>
+        :root { --primary-color: #10a37f; --bg-color: #343541; --sidebar-color: #202123; --message-agent: #444654; --text-color: #ececf1; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background-color: var(--bg-color); color: var(--text-color); display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Login Screen */
+        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .login-box { background: var(--message-agent); padding: 40px; border-radius: 8px; width: 350px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #444; }
+        .login-box h2 { color: var(--primary-color); margin-bottom: 5px; }
+        .login-subtitle { font-size: 0.9em; color: #aaa; margin-bottom: 25px; }
+        .login-box input { width: 90%; padding: 12px; margin: 10px 0; border-radius: 4px; border: 1px solid #555; background: #222; color: white; }
+        .login-box button { width: 96%; padding: 12px; background-color: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 15px; font-weight: bold; font-size: 16px;}
+        .login-box button:hover { opacity: 0.9; }
+        .error-msg { color: #ff6b6b; font-size: 14px; margin-top: 15px; display: none; }
+        
+        /* App Layout */
+        #app-container { display: flex; width: 100%; display: none; } /* Hidden until Login */
+        #sidebar { width: 260px; background-color: var(--sidebar-color); padding: 10px; display: flex; flex-direction: column; border-right: 1px solid #444; }
+        .new-chat-btn { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #555; border-radius: 5px; cursor: pointer; color: white; background: transparent; width: 100%; margin-bottom: 20px; text-align: left; }
+        .new-chat-btn:hover { background-color: #2A2B32; }
+        
+        /* History List */
+        .history-list { flex-grow: 1; overflow-y: auto; }
+        .history-item { padding: 12px; cursor: pointer; color: #ececf1; border-radius: 5px; margin-bottom: 5px; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .history-item:hover { background-color: #2A2B32; }
+        
+        /* Chat Area */
+        #chat-main { flex-grow: 1; display: flex; flex-direction: column; position: relative; }
+        #chat-window { flex-grow: 1; overflow-y: auto; padding-bottom: 100px; }
+        .message-row { display: flex; padding: 25px; border-bottom: 1px solid rgba(0,0,0,0.1); }
+        .message-row.agent { background-color: var(--message-agent); }
+        .message-content { max-width: 800px; margin: 0 auto; line-height: 1.6; width: 100%; display: flex; gap: 20px; }
+        .avatar { width: 30px; height: 30px; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
+        .user-avatar { background: #5c5c8a; } .agent-avatar { background: var(--primary-color); }
+        
+        /* Input Area */
+        #input-area { position: absolute; bottom: 0; width: 100%; background: #353740; padding: 30px 0; }
+        .input-container { max-width: 800px; margin: 0 auto; position: relative; }
+        #user-input { width: 100%; padding: 15px; border-radius: 12px; border: none; background-color: #40414f; color: white; font-size: 16px; outline: none; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>KNAgent Portal</h2>
+            <div class="login-subtitle">Authorized Enterprise Access Only</div>
+            
+            <input type="text" id="login-email" placeholder="Employee Email" />
+            <input type="password" id="login-password" placeholder="Password" />
+            
+            <button onclick="handleLogin()">Sign In</button>
+            <p class="error-msg" id="login-error">Access Denied</p>
+            
+            <div style="margin-top: 20px; font-size: 0.8em; color: #666;">
+                Contact IT Support for account provisioning.
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <div id="sidebar">
+            <button class="new-chat-btn" onclick="startNewChat()">+ New Chat</button>
+            <div class="history-list" id="history-list">
+                </div>
+            <div style="padding: 10px; border-top: 1px solid #444; margin-top: auto;">
+                <div style="font-size: 0.9em; font-weight: bold;" id="display-user"></div>
+                <div style="font-size: 0.8em; color: var(--primary-color);" id="display-role"></div>
+                <button onclick="handleLogout()" style="background:none; border:none; color:#ff6b6b; cursor:pointer; margin-top:10px; padding:0;">Log out</button>
+            </div>
+        </div>
+        <div id="chat-main">
+            <div id="chat-window"></div>
+            <div id="input-area">
+                <div class="input-container">
+                    <input type="text" id="user-input" placeholder="Ask a question about company policy..." onkeypress="if(event.key==='Enter') sendMessage()">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+        let AUTH_TOKEN = null;
+        let CURRENT_SESSION_ID = null;
+
+        // --- AUTH LOGIC ---
+        async function handleLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorElem = document.getElementById('login-error');
+
+            const formData = new URLSearchParams();
+            formData.append('username', email);
+            formData.append('password', password);
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/token`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error('Invalid Credentials');
+                const data = await res.json();
+                loginSuccess(data.access_token);
+            } catch (err) {
+                errorElem.style.display = 'block';
+                errorElem.innerText = "Login Failed: Invalid credentials.";
+            }
+        }
+
+        function loginSuccess(token) {
+            AUTH_TOKEN = token;
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-container').style.display = 'flex';
+            document.getElementById('display-user').innerText = payload.sub;
+            document.getElementById('display-role').innerText = payload.role;
+            
+            // Load History from Server immediately after login
+            loadSidebarHistory();
+            startNewChat();
+        }
+
+        function handleLogout() { location.reload(); }
+
+        // --- HISTORY LOGIC ---
+        async function loadSidebarHistory() {
+            try {
+                const res = await fetch(`${API_BASE}/sessions`, {
+                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+                });
+                if (!res.ok) return; // Silent fail if API not ready
+                
+                const sessions = await res.json();
+                const list = document.getElementById('history-list');
+                list.innerHTML = ''; // Clear current list
+                
+                sessions.forEach(session => {
+                    const div = document.createElement('div');
+                    div.className = `history-item`;
+                    // Show truncated preview or default text
+                    div.innerText = session.preview || "Chat Session";
+                    div.onclick = () => loadChatSession(session.session_id);
+                    list.appendChild(div);
+                });
+            } catch (err) {
+                console.error("Failed to load history", err);
+            }
+        }
+
+        async function loadChatSession(sessionId) {
+            CURRENT_SESSION_ID = sessionId;
+            document.getElementById('chat-window').innerHTML = '';
+            
+            try {
+                const res = await fetch(`${API_BASE}/history/${sessionId}`, {
+                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+                });
+                const messages = await res.json();
+                
+                messages.forEach(msg => {
+                    // Map 'human' -> 'user', 'ai' -> 'agent'
+                    const type = msg.role === 'human' ? 'user' : 'agent'; 
+                    const sender = type === 'user' ? 'You' : 'Agent';
+                    renderMessage(sender, msg.content, type);
+                });
+            } catch (err) {
+                console.error("Failed to load session", err);
+            }
+        }
+
+        // --- CHAT LOGIC ---
+        function startNewChat() {
+            CURRENT_SESSION_ID = crypto.randomUUID();
+            document.getElementById('chat-window').innerHTML = '';
+            renderMessage('System', 'Welcome to the Enterprise Knowledge Agent.', 'agent');
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const msg = input.value.trim();
+            if(!msg) return;
+            
+            renderMessage('You', msg, 'user');
+            input.value = '';
+
+            try {
+                const res = await fetch(`${API_BASE}/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${AUTH_TOKEN}`
+                    },
+                    body: JSON.stringify({ question: msg, session_id: CURRENT_SESSION_ID })
+                });
+                
+                if (!res.ok) throw new Error("API Error");
+                const data = await res.json();
+                renderMessage('Agent', data.answer, 'agent');
+                
+                // Refresh sidebar so the new chat appears at the top
+                loadSidebarHistory();
+                
+            } catch (err) {
+                renderMessage('System', 'Error connecting to agent.', 'agent');
+            }
+        }
+
+        function renderMessage(sender, text, type) {
+            const win = document.getElementById('chat-window');
+            const row = document.createElement('div');
+            row.className = `message-row ${type}`;
+            const initial = type === 'user' ? 'U' : 'AI';
+            const cls = type === 'user' ? 'user-avatar' : 'agent-avatar';
+            
+            row.innerHTML = `
+                <div class="message-content">
+                    <div class="avatar ${cls}">${initial}</div>
+                    <div style="width:100%">${text.replace(/\n/g, '<br>')}</div>
+                </div>`;
+            win.appendChild(row);
+            win.scrollTop = win.scrollHeight;
+        }
+    </script>
+</body>
+</html>

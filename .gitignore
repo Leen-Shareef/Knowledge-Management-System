@@ -1,0 +1,11 @@
+# .gitignore file
+
+# Configuration files to exclude
+.env
+
+# Dependencies/virtual environment files to exclude
+venv/
+
+# Python compiled files
+__pycache__/
+*.pyc.DS_Store

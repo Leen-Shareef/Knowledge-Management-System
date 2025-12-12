@@ -1,0 +1,29 @@
+# requirements.txt
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+
+# LangChain and RAG
+requests
+langchain
+langchain-chroma
+langchain-openai # Replace with Google GenAI if preferred
+chromadb
+pypdf
+python-docx
+pandas
+
+# Security and Database (Long-Term Memory)
+passlib[bcrypt]
+pyjwt
+SQLAlchemy # For persistent memory database
+psycopg2-binary # If using PostgreSQL, or change for your DB choice
+
+# Specific LangChain components needed for RAG utilities
+langchain-text-splitters  # For RecursiveCharacterTextSplitter
+langchain-community       # For PyPDFLoader, TextLoader, Docx2txtLoader
+python-docx               # Docx2txtLoader dependency
+
+# Testing
+pytest
