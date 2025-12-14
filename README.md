@@ -31,4 +31,3 @@ The EKMA follows a standard, scalable microservice architecture.
 * **Data Persistence:** SQLModel / PostgreSQL (For storing chat history, user metadata, and document records).
 * **Server:** Uvicorn (ASGI server for running the FastAPI application).
 
-## 📦 Project Structure
