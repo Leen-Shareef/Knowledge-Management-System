@@ -1,4 +1,4 @@
-# 🧠 Enterprise Knowledge Management Agent (EKMA)
+# Enterprise Knowledge Management Agent (EKMA)
 
 ## Project Overview
 
@@ -6,7 +6,7 @@ The Enterprise Knowledge Management Agent (EKMA) is a secure, production-ready A
 
 This agent is built on a highly modular and scalable **FastAPI** backend, orchestrated by **LangChain**, and utilizes **ChromaDB** for vector storage.
 
-## ✨ Key Features & Advanced Capabilities
+## Key Features & Advanced Capabilities
 
 This agent delivers the core required functionality plus the following advanced features for a best-in-class enterprise solution:
 
@@ -18,7 +18,7 @@ This agent delivers the core required functionality plus the following advanced 
 | **Automation** | **Tool Calling & Function Execution** | Enables the agent to execute custom API functions (e.g., department-specific queries) to retrieve real-time data or perform actions. |
 | **Trust/Accuracy** | **Response Validation & Fact-Checking** | A secondary mechanism (LLM or heuristic) verifies the generated answer against the retrieved source documents to minimize hallucinations. |
 
-## 📐 Architecture & Technology Stack
+## Architecture & Technology Stack
 
 The EKMA follows a standard, scalable microservice architecture. 
 
@@ -30,4 +30,5 @@ The EKMA follows a standard, scalable microservice architecture.
 * **Vector Database:** ChromaDB (Persistence for document embeddings).
 * **Data Persistence:** SQLModel / PostgreSQL (For storing chat history, user metadata, and document records).
 * **Server:** Uvicorn (ASGI server for running the FastAPI application).
+
 
